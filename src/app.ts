@@ -40,3 +40,6 @@ let { data: players, error } = await supabase
   }
 });
 
+app.get('/pruebita', async (req, res) => {
+  
+});
