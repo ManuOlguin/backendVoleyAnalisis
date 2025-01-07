@@ -12,9 +12,11 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
+    "@types/mathjs": "^9.4.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "mathjs": "^14.0.1",
     "pg": "^8.13.1"
   },
   "devDependencies": {
