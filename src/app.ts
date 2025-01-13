@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 import { createClient } from "@supabase/supabase-js";
-import math, { abs, MathType } from "mathjs";
+import math, { abs, corr, MathType } from "mathjs";
 const supabaseUrl = "https://fztuknypyqcffuqkarsc.supabase.co";
 const supabaseKey = process.env.SUPABASE_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -264,7 +264,7 @@ async function calculateElo(matchId: number) {
               break;
             }
             let w = 0.01;
-            let n = 7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2));
+            let n = (7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2))) * correccion;
 
             let a = playerData.elo;
             switch (true) {
