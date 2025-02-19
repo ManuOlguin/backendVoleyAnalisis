@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 import { createClient } from "@supabase/supabase-js";
-import math, { MathType } from "mathjs";
+import math, { abs, corr, MathType } from "mathjs";
 const supabaseUrl = "https://fztuknypyqcffuqkarsc.supabase.co";
 const supabaseKey = process.env.SUPABASE_KEY || "";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -174,15 +174,15 @@ async function addMatchToDatabase(
     const teamPlayerInsertions = [
       ...(Array.isArray(team1Players)
         ? team1Players.map((player_id: number) => ({
-            team_id: team1_id,
-            player_id,
-          }))
+          team_id: team1_id,
+          player_id,
+        }))
         : []),
       ...(Array.isArray(team2Players)
         ? team2Players.map((player_id: number) => ({
-            team_id: team2_id,
-            player_id,
-          }))
+          team_id: team2_id,
+          player_id,
+        }))
         : []),
     ];
     console.log(
@@ -263,10 +263,10 @@ async function calculateElo(matchId: number) {
       for (let j = 0; j <= data[i - 1].team_player.length - 1; j++) {
         const playerData: any =
           data &&
-          data[0] &&
-          data[0].team_player &&
-          data[0].team_player[0] &&
-          typeof data[0].team_player[0].players === "object"
+            data[0] &&
+            data[0].team_player &&
+            data[0].team_player[0] &&
+            typeof data[0].team_player[0].players === "object"
             ? data[i - 1].team_player[j].players
             : null;
         console.log("Equipo " + i + " " + playerData.elo);
@@ -295,10 +295,10 @@ async function calculateElo(matchId: number) {
       for (let j = 0; j <= data[i - 1].team_player.length - 1; j++) {
         const playerData: any =
           data &&
-          data[0] &&
-          data[0].team_player &&
-          data[0].team_player[0] &&
-          typeof data[0].team_player[0].players === "object"
+            data[0] &&
+            data[0].team_player &&
+            data[0].team_player[0] &&
+            typeof data[0].team_player[0].players === "object"
             ? data[i - 1].team_player[j].players
             : null;
         let tuvieja = playerData.elo;
@@ -317,37 +317,9 @@ async function calculateElo(matchId: number) {
               console.log("Error en correccion");
               break;
             }
-            let n = 0;
-            switch (true) {
-              case i === 1 && promedio1 != promedio2:
-                n =
-                  20 *
-                  (1 +
-                    0.9 *
-                      Math.tanh(
-                        (playerData.elo - promedio1) /
-                          (Math.abs(promedio1 - promedio2) + correccion * 0.1)
-                      ));
-                break;
-              case i === 2 && promedio1 != promedio2:
-                n =
-                  20 *
-                  (1 +
-                    0.9 *
-                      Math.tanh(
-                        (playerData.elo - promedio2) /
-                          (Math.abs(promedio1 - promedio2) + correccion * 0.1)
-                      ));
-                break;
-              case promedio1 === promedio2:
-                n =
-                  20 *
-                  (1 + 0.9 * Math.tanh((playerData.elo - promedio2) / 0.14));
-                break;
-              default:
-                console.log("Error en k");
-                break;
-            }
+            let w = 0.01;
+            let n = (7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2))) * correccion;
+
             let a = playerData.elo;
             switch (true) {
               case i === 1 && sets[k].winner_known === 1:
@@ -369,27 +341,27 @@ async function calculateElo(matchId: number) {
 
             console.log(
               "El jugador: " +
-                playerData.name +
-                " con Equipo: " +
-                i +
-                " " +
-                team1_score +
-                " contra " +
-                team2_score +
-                " en set numero " +
-                (k + 1) +
-                " con diferencia de elo " +
-                (playerData.elo - a)
-            );
-          }
-          console.log(
-            "El jugador: " +
               playerData.name +
               " con Equipo: " +
               i +
               " " +
-              " con diferencia de elo global: " +
-              (playerData.elo - tuvieja)
+              team1_score +
+              " contra " +
+              team2_score +
+              " en set numero " +
+              (k + 1) +
+              " con diferencia de elo " +
+              (playerData.elo - a)
+            );
+          }
+          console.log(
+            "El jugador: " +
+            playerData.name +
+            " con Equipo: " +
+            i +
+            " " +
+            " con diferencia de elo global: " +
+            (playerData.elo - tuvieja)
           );
         }
       }
