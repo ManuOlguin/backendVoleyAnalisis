@@ -256,94 +256,91 @@ async function calculateElo(matchId: number) {
 
   console.log("Sets:", sets);
 
+  const juanito: any[] = data && data.length > 0
+    ? data.flatMap(team => team.team_player.map(tp => tp.players))
+    : [];
+
+
   if (data && data.length > 0) {
-    let promedio1 = 0;
-    let promedio2 = 0;
-    for (let i = 1; i <= 2; i++) {
-      for (let j = 0; j <= data[i - 1].team_player.length - 1; j++) {
-        const playerData: any =
-          data &&
-            data[0] &&
-            data[0].team_player &&
-            data[0].team_player[0] &&
-            typeof data[0].team_player[0].players === "object"
-            ? data[i - 1].team_player[j].players
-            : null;
-        console.log("Equipo " + i + " " + playerData.elo);
+    if (sets) {
 
-        if (i === 1) promedio1 += playerData.elo;
-        else promedio2 += playerData.elo;
-      }
-      if (i === 1) {
-        promedio1 = promedio1 / data[i - 1].team_player.length;
-      } else if (i === 2) {
-        promedio2 = promedio2 / data[i - 1].team_player.length;
-      } else {
-        console.log("Error en promedio");
-        break;
-      }
+      const playerData: any[] = data && data.length > 0
+        ? data.flatMap(team => team.team_player.map(tp => tp.players))
+        : [];
 
-      console.log("Promedio " + i + " " + (i === 1 ? promedio1 : promedio2));
-    }
 
-    let probabilidad1 = 1 / (1 + Math.pow(10, (-promedio2 + promedio1) / 400));
-    let probabilidad2 = 1 / (1 + Math.pow(10, (-promedio1 + promedio2) / 400));
 
-    console.log("Probabilidad" + " " + probabilidad1 + " " + probabilidad2);
 
-    for (let i = 1; i <= 2; i++) {
-      for (let j = 0; j <= data[i - 1].team_player.length - 1; j++) {
-        const playerData: any =
-          data &&
-            data[0] &&
-            data[0].team_player &&
-            data[0].team_player[0] &&
-            typeof data[0].team_player[0].players === "object"
-            ? data[i - 1].team_player[j].players
-            : null;
-        let tuvieja = playerData.elo;
-        if (sets) {
-          for (let k = 0; k <= sets.length - 1; k++) {
-            let team1_score =
-              sets[k].team1_score !== null ? sets[k].team1_score : 1;
-            let team2_score =
-              sets[k].team2_score !== null ? sets[k].team2_score : 1;
-            let correccion = 0;
-            if (i === 1) {
-              correccion = Math.pow(team1_score / team2_score, 0.14);
-            } else if (i === 2) {
-              correccion = Math.pow(team2_score / team1_score, 0.14);
-            } else {
-              console.log("Error en correccion");
+      console.log("Player data:", playerData);
+
+      for (let k = 0; k <= sets.length - 1; k++) {
+
+        // pormedio
+        let promedio1 = 0;
+        let promedio2 = 0;
+
+        for (let j = 0; j <= playerData.length - 1; j++) {
+          if (j <= 5) {
+            promedio1 += playerData[j].elo / 6;
+            console.log("Equipo " + 1 + " " + playerData[j].elo);
+
+          } else if (j > 5) {
+            promedio2 += playerData[j].elo / 6;
+            console.log("Equipo " + 2 + " " + playerData[j].elo);
+
+          }
+
+        }
+
+        // pormedio
+        let probabilidad1 = 1 / (1 + Math.pow(10, (-promedio2 + promedio1) / 400));
+        let probabilidad2 = 1 / (1 + Math.pow(10, (-promedio1 + promedio2) / 400));
+
+        console.log("Probabilidad" + " " + probabilidad1 + " " + probabilidad2);
+
+        let team1_score =
+          sets[k].team1_score !== null ? sets[k].team1_score : 1;
+        let team2_score =
+          sets[k].team2_score !== null ? sets[k].team2_score : 1;
+
+        for (let j = 0; j <= playerData.length - 1; j++) {
+          let correccion = 0;
+          if (j <= 5) {
+            correccion = Math.pow(team1_score / team2_score, 0.14);
+          } else if (j > 5) {
+            correccion = Math.pow(team2_score / team1_score, 0.14);
+          } else {
+            console.log("Error en correccion");
+            break;
+          }
+          let w = 0.01;
+          let n = (7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2))) * correccion;
+
+          let tuvieja = playerData[j].elo;
+          switch (true) {
+            case j <= 5 && sets[k].winner_known === 1:
+              playerData[j].elo += n * (1 - probabilidad1);
               break;
-            }
-            let w = 0.01;
-            let n = (7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2))) * correccion;
+            case j > 5 && sets[k].winner_known === 1:
+              playerData[j].elo += n * (0 - probabilidad2);
+              break;
+            case j <= 5 && sets[k].winner_known === 2:
+              playerData[j].elo += n * (0 - probabilidad1);
+              break;
+            case j > 5 && sets[k].winner_known === 2:
+              playerData[j].elo += n * (1 - probabilidad2);
+              break;
+            default:
+              console.log("Error en aplicar elo");
+              break;
+          }
 
-            let a = playerData.elo;
-            switch (true) {
-              case i === 1 && sets[k].winner_known === 1:
-                playerData.elo += n * (1 - probabilidad1);
-                break;
-              case i === 2 && sets[k].winner_known === 1:
-                playerData.elo += n * (0 - probabilidad2);
-                break;
-              case i === 1 && sets[k].winner_known === 2:
-                playerData.elo += n * (0 - probabilidad1);
-                break;
-              case i === 2 && sets[k].winner_known === 2:
-                playerData.elo += n * (1 - probabilidad2);
-                break;
-              default:
-                console.log("Error en aplicar elo");
-                break;
-            }
-
+          if (j !== 5) {
             console.log(
               "El jugador: " +
-              playerData.name +
+              playerData[j].name +
               " con Equipo: " +
-              i +
+              (j <= 5 ? 1 : 2) +
               " " +
               team1_score +
               " contra " +
@@ -351,22 +348,21 @@ async function calculateElo(matchId: number) {
               " en set numero " +
               (k + 1) +
               " con diferencia de elo " +
-              (playerData.elo - a)
+              (playerData[j].elo - tuvieja)
             );
           }
-          console.log(
-            "El jugador: " +
-            playerData.name +
-            " con Equipo: " +
-            i +
-            " " +
-            " con diferencia de elo global: " +
-            (playerData.elo - tuvieja)
-          );
         }
       }
+      for (let j = 0; j < playerData.length; j++) {
+        console.log(
+          ` ELO DE :) ${playerData[j].name}: ${playerData[j].elo}`
+        );
+      }
     }
-  } else {
+
+
+  }
+  else {
     throw new Error(
       "No players found " + error?.message + " " + error2?.message
     );
