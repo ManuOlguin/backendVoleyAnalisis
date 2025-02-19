@@ -38,6 +38,60 @@ app.get("/api/fullPlayers", async (req, res) => {
   }
 });
 
+app.get("/api/fullMatches", async (req, res) => {
+  try {
+    let { data: matches, error: matchesError } = await supabase
+      .from("matches")
+      .select(`
+        id, 
+        date,
+        season_id,
+        sets (
+          id, 
+          team1_score, 
+          team2_score, 
+          winner_known, 
+          set_order
+        ),
+        teams (
+          id, 
+          team_number,
+          team_player (
+            player_id,
+            players (id, name, elo)
+          )
+        )
+      `);
+
+    if (matchesError) throw matchesError;
+
+    // Structure the response
+    if (!matches) {
+      throw new Error("No matches found");
+    }
+
+
+    res.status(200).json(matches);
+  } catch (error) {
+    console.error("Error fetching matches:", error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+
+app.get("/api/fullPlayers", async (req, res) => {
+  try {
+    let { data: players, error } = await supabase.from("players").select("*");
+
+    if (error) throw error;
+    console.log("Players:", players);
+    res.status(200).json(players);
+  } catch (error) {
+    console.error("Error fetching players:", error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 app.post("/api/addMatch", async (req, res) => {
   try {
     const season = 1;
