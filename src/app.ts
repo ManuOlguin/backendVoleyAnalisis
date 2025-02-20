@@ -129,7 +129,7 @@ async function addMatchToDatabase(
   team2Players: number[],
   setsData: any[]
 ) {
-  try {
+
     // Step 1: Insert into the matches table
     const { data: matchData, error: matchError } = await supabase
       .from("matches")
@@ -169,27 +169,42 @@ async function addMatchToDatabase(
     interface PlayerInsertion {
       team_id: number;
       player_id: number;
+      //position
     }
+    console.log("Sets data:", setsData, team1Players.indexOf(2));
 
     const teamPlayerInsertions = [
       ...(Array.isArray(team1Players)
-        ? team1Players.map((player_id: number) => ({
-          team_id: team1_id,
-          player_id,
-        }))
-        : []),
+      ? team1Players.map((player_id: number) => ({
+        team_id: team1_id,
+        player_id,
+        position: setsData.map(set => {
+          const pos = set.team1Positions.indexOf(player_id.toString());
+          const valor = pos === 0 ? "A" : pos === 1 ? "O" : pos === 2 || pos === 3 ? "P" : pos === 4 || pos === 5 ? "C" : "";
+
+        return pos === 0 ? "A" : pos === 1 ? "O" : pos === 2 || pos === 3 ? "P" : pos === 4 || pos === 5 ? "C" : "";
+        })
+      }))
+      : []),
       ...(Array.isArray(team2Players)
-        ? team2Players.map((player_id: number) => ({
-          team_id: team2_id,
-          player_id,
-        }))
-        : []),
+      ? team2Players.map((player_id: number) => ({
+        team_id: team2_id,
+        player_id,
+        position: setsData.map(set => {
+          const pos = set.team2Positions.indexOf(player_id.toString());
+          const valor = pos === 0 ? "A" : pos === 1 ? "O" : pos === 2 || pos === 3 ? "P" : pos === 4 || pos === 5 ? "C" : "";
+
+        return pos === 0 ? "A" : pos === 1 ? "O" : pos === 2 || pos === 3 ? "P" : pos === 4 || pos === 5 ? "C" : "";
+        })
+      }))
+      : []),
     ];
     console.log(
       "Team player insertions:",
       team1Players,
       team2Players,
-      teamPlayerInsertions
+      teamPlayerInsertions,
+
     );
 
     const { error: playersError } = await supabase
@@ -210,12 +225,14 @@ async function addMatchToDatabase(
 
     const setInsertions: SetInsertion[] = setsData.map((set: any) => ({
       match_id,
-      team1_score: set.team1Score,
-      team2_score: set.team2Score,
+      team1_score: set.team1_score,
+      team2_score: set.team2_score,
       winner_known: set.winner === "team1" ? 1 : 2,
-      ignore_for_elo: set.ignoreforelo,
-      set_order: set.setOrder,
+      ignore_for_elo: set.ignore_for_elo,
+      set_order: set.set_order,
     }));
+    console.log("Set insertions:", setInsertions);
+
 
     const { error: setsError } = await supabase
       .from("sets")
@@ -224,9 +241,7 @@ async function addMatchToDatabase(
     if (setsError) throw setsError;
 
     return match_id;
-  } catch (error) {
-    throw new Error(`Error adding match: ${(error as Error).message}`);
-  }
+
 }
 
 async function calculateElo(matchId: number) {
@@ -272,10 +287,11 @@ async function calculateElo(matchId: number) {
 
 
       console.log("Player data:", playerData);
+      const playerEloChangesGlobal: { playerId: number; eloChange: number }[] = [];
 
       for (let k = 0; k <= sets.length - 1; k++) {
-
         // pormedio
+        const playerEloChanges: { playerId: number; eloChange: number }[] = [];
         let promedio1 = 0;
         let promedio2 = 0;
 
@@ -303,19 +319,22 @@ async function calculateElo(matchId: number) {
         let team2_score =
           sets[k].team2_score !== null ? sets[k].team2_score : 1;
 
+          
         for (let j = 0; j <= playerData.length - 1; j++) {
           let correccion = 0;
           if (j <= 5) {
-            correccion = Math.pow(team1_score / team2_score, 0.14);
+            correccion = Math.pow(team1_score / team2_score, 0.20);
           } else if (j > 5) {
-            correccion = Math.pow(team2_score / team1_score, 0.14);
+            correccion = Math.pow(team2_score / team1_score, 0.20);
           } else {
             console.log("Error en correccion");
             break;
           }
+          console.log("Team scores:", team1_score, team2_score);
+          console.log("Correccion:", correccion);
           let w = 0.01;
           let n = (7 + (20 - 7) * 1 / (1 + w * Math.abs(promedio1 - promedio2))) * correccion;
-
+          console.log("N" + " " + n);
           let tuvieja = playerData[j].elo;
           switch (true) {
             case j <= 5 && sets[k].winner_known === 1:
@@ -351,13 +370,48 @@ async function calculateElo(matchId: number) {
               (playerData[j].elo - tuvieja)
             );
           }
+          playerEloChanges.push({
+            playerId: playerData[j].id,
+            eloChange: playerData[j].elo - tuvieja,
+          });
+            const existingChange = playerEloChangesGlobal.find(change => change.playerId === playerData[j].id);
+            if (existingChange) {
+            existingChange.eloChange += (playerData[j].elo - tuvieja);
+            } else {
+            playerEloChangesGlobal.push({
+              playerId: playerData[j].id,
+              eloChange: playerData[j].elo - tuvieja,
+            });
+            }
         }
+        const eloHistoryInsertions = playerData.map(player => ({
+          player_id: player.id,
+          set_id: sets[k].id, // Assuming the set_id is the same for all players in this context
+          change: playerEloChanges.find(playerEloChanges => playerEloChanges.playerId === player.id)?.eloChange ?? 0,
+        }));
+  
+        const { error: eloHistoryError } = await supabase
+          .from("elo_history")
+          .insert(eloHistoryInsertions);
+  
+        if (eloHistoryError) throw eloHistoryError;
       }
       for (let j = 0; j < playerData.length; j++) {
         console.log(
           ` ELO DE :) ${playerData[j].name}: ${playerData[j].elo}`
         );
       }
+      const playerUpdates = playerEloChangesGlobal.map(change => ({
+        id: change.playerId,
+        elo: playerData.find(player => player.id === change.playerId)?.elo ?? 0
+      }));
+
+      const { error: updateError } = await supabase
+        .from("players")
+        .upsert(playerUpdates, { onConflict: "id" });
+
+      if (updateError) throw updateError;
+      console.log("Player elo changes:", playerEloChangesGlobal);
     }
 
 
