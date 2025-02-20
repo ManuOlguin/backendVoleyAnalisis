@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node src/app.ts"
+    "starto": "ts-node src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "vercel-build": "tsc"
   },
   "keywords": [],
   "author": "",
