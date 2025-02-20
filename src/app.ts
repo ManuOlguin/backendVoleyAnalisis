@@ -51,7 +51,10 @@ app.get("/api/fullMatches", async (req, res) => {
           team1_score, 
           team2_score, 
           winner_known, 
-          set_order
+          set_order,
+          elo_history (
+            player_id,
+            change)
         ),
         teams (
           id, 
