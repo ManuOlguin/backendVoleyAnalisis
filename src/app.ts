@@ -25,18 +25,7 @@ app.listen(port, () => {
   console.log(`Backend is running on http://localhost:${port}`);
 });
 
-app.get("/api/fullPlayers", async (req, res) => {
-  try {
-    let { data: players, error } = await supabase.from("players").select("*");
 
-    if (error) throw error;
-    console.log("Players:", players);
-    res.status(200).json(players);
-  } catch (error) {
-    console.error("Error fetching players:", error);
-    res.status(500).json({ error: (error as Error).message });
-  }
-});
 
 app.get("/api/fullMatches", async (req, res) => {
   try {
