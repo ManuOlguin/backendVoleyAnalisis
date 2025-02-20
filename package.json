@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "starto": "ts-node src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js",
+    "start": "node dist/src/app.js",
     "vercel-build": "tsc"
   },
   "keywords": [],
